@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -84,6 +85,76 @@ func main() {
 		context.JSON(200, gin.H{
 			"name": name,
 			"age":  age,
+		})
+	})
+	type UserInfo struct {
+		UserName string `form:"username" json:"username"`
+		Password string `form:"password" json:"password"`
+	}
+	r.GET("user", func(context *gin.Context) {
+		var U UserInfo
+		err := context.BindQuery(&U)
+		if err != nil {
+			context.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+			})
+		} else {
+			fmt.Printf("%#v\n", U)
+			context.JSON(200, gin.H{
+				"Password": U.Password,
+				"UserName": U.UserName,
+			})
+		}
+	})
+
+	r.POST("user", func(context *gin.Context) {
+		var U UserInfo
+		err := context.ShouldBind(&U) //接收post 参数的
+		if err != nil {
+			context.JSON(http.StatusBadRequest, gin.H{
+				"message": err.Error(),
+			})
+
+		} else {
+			fmt.Printf("%#v\n", U)
+			context.JSON(200, gin.H{
+				"message": U,
+			})
+		}
+	})
+	//重定向
+	r.GET("/redirect", func(context *gin.Context) {
+		context.Redirect(http.StatusMovedPermanently, "https://www.sogo.com")
+	})
+	//路由重定向
+	r.GET("/a", func(context *gin.Context) {
+		context.Request.URL.Path = "/index" //修改url
+		r.HandleContext(context)            //继续后续处理
+	})
+
+	//路由组
+	shopGroup := r.Group("/shop")
+	{
+		shopGroup.GET("index", func(context *gin.Context) {
+			context.JSON(http.StatusOK, gin.H{
+				"message": "index",
+			})
+		})
+		shopGroup.GET("xx", func(context *gin.Context) {
+			context.JSON(http.StatusOK, gin.H{
+				"message": "xx",
+			})
+		})
+		shopGroup.GET("oo", func(context *gin.Context) {
+			context.JSON(http.StatusOK, gin.H{
+				"message": "oo",
+			})
+		})
+	}
+
+	r.NoRoute(func(context *gin.Context) {
+		context.JSON(http.StatusNotFound, gin.H{
+			"message": "path not fount",
 		})
 	})
 	// Run("里面不指定端口号默认为8080")
