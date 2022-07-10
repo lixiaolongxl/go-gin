@@ -1,14 +1,100 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
 	"net/http"
+	"os"
+	"time"
 )
 
+type CustomResponseWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (w CustomResponseWriter) Write(b []byte) (int, error) {
+	w.body.Write(b)
+	return w.ResponseWriter.Write(b)
+}
+
+func (w CustomResponseWriter) WriteString(s string) (int, error) {
+	w.body.WriteString(s)
+	return w.ResponseWriter.WriteString(s)
+}
+func AccessLogHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		blw := &CustomResponseWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
+		c.Writer = blw
+		c.Next()
+		str := fmt.Sprintf("url=%s, status=%d, resp=%s \n", c.Request.URL, c.Writer.Status(), blw.body.String())
+		fmt.Fprint(gin.DefaultWriter, "<====================================================================>\n")
+		fmt.Fprint(gin.DefaultWriter, str)
+	}
+}
+
+//func MiddleWare(c *gin.Context) {
+//	t := time.Now()
+//	fmt.Println("中间件开始执行了")
+//	// 设置变量到Context的key中，可以通过Get()取
+//	c.Set("request", "中间件")
+//	// 执行函数
+//	c.Next()
+//	// 中间件执行完后续的一些事情
+//	status := c.Writer.Status()
+//	fmt.Println("中间件执行完毕", status)
+//	t2 := time.Since(t)
+//	fmt.Println("time:", t2)
+//}
+
+func MiddleWare(doChek bool) gin.HandlerFunc {
+	//可以做一些查询数据库逻辑等
+	return func(c *gin.Context) {
+		if doChek {
+			t := time.Now()
+			fmt.Println("中间件开始执行了")
+			// 设置变量到Context的key中，可以通过Get()取
+			c.Set("request", "中间件")
+			c.Next()
+			status := c.Writer.Status()
+			fmt.Println("中间件执行完毕", status)
+			t2 := time.Since(t)
+			fmt.Println("time:", t2)
+
+			//fmt.Fprint(gin.DefaultWriter, &c.Writer)
+		} else {
+			c.Next()
+		}
+
+	}
+}
+func m2(c *gin.Context) {
+	//
+	//c.Next()  // 执行后续函数
+	//c.Abort() //  停止执行后序函数
+
+	fmt.Println("time:", "mmmmm in ")
+}
 func main() {
+	// 禁用控制台颜色，将日志写入文件时不需要控制台颜色。
+	gin.DisableConsoleColor()
+
+	// 记录到文件。
+	f, _ := os.Create("gin.log")
+	gin.DefaultWriter = io.MultiWriter(f)
+
 	// 1.创建路由
 	r := gin.Default()
+	//r := gin.New()
+	//gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, nuHandlers int) {
+	//	log.Printf("endpoint %v %v %v %v\n", httpMethod, absolutePath, handlerName, nuHandlers)
+	//}
+
+	r.Use(MiddleWare(true))
+
+	r.Use(AccessLogHandler())
 	// 2.绑定路由规则，执行的函数
 	// gin.Context，封装了request和response
 	r.GET("/", func(c *gin.Context) {
@@ -94,12 +180,13 @@ func main() {
 	r.GET("user", func(context *gin.Context) {
 		var U UserInfo
 		err := context.BindQuery(&U)
+
 		if err != nil {
 			context.JSON(http.StatusBadRequest, gin.H{
 				"message": err.Error(),
 			})
 		} else {
-			fmt.Printf("%#v\n", U)
+			//fmt.Printf("%#v\n", U)
 			context.JSON(200, gin.H{
 				"Password": U.Password,
 				"UserName": U.UserName,
@@ -133,12 +220,16 @@ func main() {
 	})
 
 	//路由组
+	//shopGroup := r.Group("/shop", m2)
 	shopGroup := r.Group("/shop")
+	shopGroup.Use(m2)
 	{
 		shopGroup.GET("index", func(context *gin.Context) {
 			context.JSON(http.StatusOK, gin.H{
 				"message": "index",
 			})
+			//go 中必须使用context 的copy
+			//go funcxx(context.Copy())
 		})
 		shopGroup.GET("xx", func(context *gin.Context) {
 			context.JSON(http.StatusOK, gin.H{
@@ -157,6 +248,8 @@ func main() {
 			"message": "path not fount",
 		})
 	})
+	//中间建
+
 	// Run("里面不指定端口号默认为8080")
 	r.Run(":8000")
 }
