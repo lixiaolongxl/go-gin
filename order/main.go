@@ -32,16 +32,19 @@ func main() {
 				"message": "ok",
 			})
 		})
+		
 		V1Group.POST("todo", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"message": "ok",
 			})
 		})
+
 		V1Group.PUT("todo", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"message": "ok",
 			})
 		})
+
 		V1Group.DELETE("todo", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"message": "ok",
