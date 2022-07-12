@@ -2,8 +2,11 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
@@ -77,8 +80,55 @@ func m2(c *gin.Context) {
 
 	fmt.Println("time:", "mmmmm in ")
 }
+
+type UserInfo struct {
+	ID     uint
+	Name   string
+	Gender string
+	Hobby  string
+}
+type User struct {
+	gorm.Model
+	Name         string
+	Age          sql.NullInt64
+	Birthday     *time.Time
+	Email        string  `gorm:"type:varchar(100);unique_index"`
+	Role         string  `gorm:"size:255"`        // 设置字段大小为255
+	MemberNumber *string `gorm:"unique;not null"` // 设置会员号（member number）唯一并且不为空
+	Num          int     `gorm:"AUTO_INCREMENT"`  // 设置 num 为自增类型
+	Address      string  `gorm:"index:addr"`      // 给address字段创建名为addr的索引
+	IgnoreMe     int     `gorm:"-"`               // 忽略本字段
+}
+
+// 使用`AnimalID`作为主键
+type Animal struct {
+	AnimalID int64 `gorm:"primary_key;column:beast_id"`
+	Name     string
+	Age      int64
+}
+
+//修改表名s
+func (Animal) TableName() string {
+	return "profile"
+}
 func main() {
 	// 禁用控制台颜色，将日志写入文件时不需要控制台颜色。
+	dsn := "root:root@tcp(127.0.0.1:3306)/orm?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	// 自动迁移
+	db.AutoMigrate(&UserInfo{}, &User{}, &Animal{})
+
+	//创建记录
+
+	//u1 := UserInfo{1, "七米", "男", "篮球"}
+	//u2 := UserInfo{2, "沙河娜扎", "女", "足球"}
+	//db.Debug().Create(&u1)
+	//db.Create(&u2)
 	gin.DisableConsoleColor()
 
 	// 记录到文件。
